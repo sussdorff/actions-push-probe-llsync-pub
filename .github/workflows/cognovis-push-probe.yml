@@ -1,0 +1,35 @@
+name: Cognovis push probe (temporary)
+
+on:
+  push:
+    branches:
+      - probe/push-check
+
+permissions: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          fetch-depth: 0
+      - name: Push history that touches a workflow file but leaves the tip tree unchanged
+        run: |
+          git config user.name "probe"
+          git config user.email "probe@example.invalid"
+          git checkout -b probe/push-result
+          printf 'name: x\non: workflow_dispatch\njobs: {}\n' > .github/workflows/upstream-probe.yml
+          git add .github/workflows/upstream-probe.yml
+          git commit -m "probe: add workflow file"
+          git rm -q .github/workflows/upstream-probe.yml
+          git commit -m "probe: remove workflow file"
+          git diff --stat HEAD~2 HEAD
+          if git push origin HEAD:refs/heads/probe/push-result; then
+            echo "RESULT=history-push-allowed"
+          else
+            echo "RESULT=history-push-refused"
+          fi
